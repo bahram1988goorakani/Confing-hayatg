@@ -9,7 +9,7 @@ session = os.getenv("STRING_SESSION")
 target = os.getenv("TARGET_CHANNEL")
 
 channels = [
-    "channel1",
+    "@confinghg",
     "channel2"
 ]
 
