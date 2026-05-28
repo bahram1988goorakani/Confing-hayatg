@@ -10,7 +10,7 @@ target = os.getenv("TARGET_CHANNEL")
 
 # فقط کانال واقعی و درست
 channels = [
-    "@confinghg"
+    "@Farah_VPN"
 ]
 
 patterns = [
