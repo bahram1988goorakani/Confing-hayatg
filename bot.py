@@ -10,6 +10,10 @@ API_HASH = os.getenv("API_HASH")
 SESSION = os.getenv("STRING_SESSION")
 TARGET = os.getenv("TARGET_CHANNEL")
 
+# اگر TARGET عددی است، آن را به int تبدیل می‌کنیم (مخصوص آیدی‌های -100...)
+if TARGET and TARGET.lstrip('-').isdigit():
+    TARGET = int(TARGET)
+
 # لیست کانال‌های سورس
 SOURCE_CHANNELS = [
     "@oneclickvpnkeys",
@@ -33,6 +37,7 @@ async def main():
     
     all_configs = []
 
+    # خواندن کانفیگ‌ها
     for channel in SOURCE_CHANNELS:
         print(f"Checking {channel}...")
         try:
@@ -44,13 +49,19 @@ async def main():
         except Exception as e:
             print(f"Error reading {channel}: {e}")
 
-    # ارسال کانفیگ‌ها به کانال مقصد
-    unique_configs = list(set(all_configs))[:5] # فقط ۵ تا برای جلوگیری از اسپم
+    # حذف تکراری‌ها و محدود کردن به ۵ عدد
+    unique_configs = list(set(all_configs))[:5]
     
+    if not unique_configs:
+        print("No configs found.")
+        return
+
+    # ارسال به کانال مقصد
+    print(f"Sending {len(unique_configs)} configs to {TARGET}...")
     for config in unique_configs:
         try:
             await client.send_message(TARGET, f"🚀 New Config:\n\n`{config}`")
-            await asyncio.sleep(3) # برای جلوگیری از بلاک شدن
+            await asyncio.sleep(3)
         except Exception as e:
             print(f"Send error: {e}")
 
