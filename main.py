@@ -1,6 +1,5 @@
 import os
 import re
-import requests
 import asyncio
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -10,52 +9,103 @@ API_HASH = os.getenv("API_HASH")
 SESSION = os.getenv("STRING_SESSION")
 TARGET = os.getenv("TARGET_CHANNEL")
 
-URL = "https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/all_configs.txt"
+# کانال‌های سورس
+SOURCE_CHANNELS = [
+    "@oneclickvpnkeys",
+    "@ConfigX2ray",
+    "@Farah_VPN"
+]
 
-pattern = re.compile(r"(vless://\S+|vmess://\S+|trojan://\S+|ss://\S+)")
+# الگوهای کانفیگ
+PATTERNS = [
+    r"vmess://[^\s]+",
+    r"vless://[^\s]+",
+    r"trojan://[^\s]+",
+    r"ss://[^\s]+"
+]
 
-STATE_FILE = "sent.txt"
+client = TelegramClient(
+    StringSession(SESSION),
+    API_ID,
+    API_HASH
+)
 
-client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
-
-
-def load_sent():
-    if not os.path.exists(STATE_FILE):
-        return set()
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        return set(f.read().splitlines())
-
-
-def save_sent(sent):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(sent))
+sent_configs = set()
 
 
-async def fetch_and_send():
-    print("📡 Fetching GitHub configs...")
-
-    sent = load_sent()
-
+async def send_config(config):
     try:
-        text = requests.get(URL, timeout=20).text
-        configs = pattern.findall(text)
+        await client.send_message(TARGET, config)
+        print("SENT:", config[:30])
 
-        new_items = [c for c in configs if c not in sent]
-
-        print("New configs:", len(new_items))
-
-        for c in new_items:
-            await client.send_message(TARGET, c)
-            sent.add(c)
-
-        save_sent(sent)
+        # anti flood
+        await asyncio.sleep(2)
 
     except Exception as e:
-        print("ERROR:", e)
+        print("SEND ERROR:", e)
+
+
+async def fetch_from_channel(channel):
+    found = []
+
+    try:
+        async for msg in client.iter_messages(channel, limit=20):
+
+            if not msg.message:
+                continue
+
+            for pattern in PATTERNS:
+
+                matches = re.findall(pattern, msg.message)
+
+                for config in matches:
+
+                    if config not in sent_configs:
+                        sent_configs.add(config)
+                        found.append(config)
+
+    except Exception as e:
+        print("CHANNEL ERROR:", channel, e)
+
+    return found
 
 
 async def main():
-    await fetch_and_send()
+
+    all_configs = []
+
+    for channel in SOURCE_CHANNELS:
+
+        print("CHECKING:", channel)
+
+        configs = await fetch_from_channel(channel)
+
+        all_configs.extend(configs)
+
+    # فقط 5 تا در هر اجرا
+    batch = all_configs[:5]
+
+    print("TOTAL NEW:", len(all_configs))
+    print("SENDING:", len(batch))
+
+    sent = 0
+
+    for config in batch:
+
+        await send_config(config)
+
+        sent += 1
+
+    # گزارش
+    report = (
+        f"📊 Report\n"
+        f"Found: {len(all_configs)}\n"
+        f"Sent: {sent}"
+    )
+
+    await client.send_message(TARGET, report)
+
+    print(report)
 
 
 with client:
