@@ -1,4 +1,4 @@
-name: V2 Fetcher Pro
+name: V2 Fetcher
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install telethon requests
 
-      - name: Run bot
+      - name: Run script
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
