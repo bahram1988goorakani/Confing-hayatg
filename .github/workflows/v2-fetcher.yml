@@ -1,68 +1,30 @@
-import os
-import re
-import requests
-import asyncio
-from telethon import TelegramClient
-from telethon.sessions import StringSession
+name: V2 Fetcher Pro
 
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-SESSION = os.getenv("STRING_SESSION")
-TARGET = os.getenv("TARGET_CHANNEL")
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
-URL = "https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/all_configs.txt"
+jobs:
+  run:
+    runs-on: ubuntu-latest
 
-pattern = re.compile(r"(vless://\S+|vmess://\S+|trojan://\S+|ss://\S+)")
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-STATE_FILE = "sent.txt"
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
+      - name: Install dependencies
+        run: pip install telethon requests
 
-
-def load_sent():
-    if not os.path.exists(STATE_FILE):
-        return set()
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        return set(f.read().splitlines())
-
-
-def save_sent(sent):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(sent))
-
-
-async def fetch_and_send():
-    print("📡 Fetching GitHub configs...")
-
-    sent = load_sent()
-
-    try:
-        text = requests.get(URL, timeout=20).text
-        configs = pattern.findall(text)
-
-        # فقط جدیدها
-        new_items = [c for c in configs if c not in sent]
-
-        print("New found:", len(new_items))
-
-        # ⛔ محدود کردن به 5 تا در هر اجرا
-        limited_items = new_items[:5]
-
-        print("Sending:", len(limited_items))
-
-        for c in limited_items:
-            await client.send_message(TARGET, c)
-            sent.add(c)
-
-        save_sent(sent)
-
-    except Exception as e:
-        print("ERROR:", e)
-
-
-async def main():
-    await fetch_and_send()
-
-
-with client:
-    client.loop.run_until_complete(main())
+      - name: Run bot
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          STRING_SESSION: ${{ secrets.STRING_SESSION }}
+          TARGET_CHANNEL: ${{ secrets.TARGET_CHANNEL }}
+        run: python main.py
